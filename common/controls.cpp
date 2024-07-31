@@ -37,7 +37,7 @@ float mouseSpeed = 0.005f;
 
 
 
-void computeMatricesFromInputs() {
+void computeMatricesFromInputs(bool cursorOn) {
 
 	// glfwGetTime is called only once, the first time this function is called
 	static double lastTime = glfwGetTime();
@@ -46,17 +46,26 @@ void computeMatricesFromInputs() {
 	double currentTime = glfwGetTime();
 	float deltaTime = float(currentTime - lastTime);
 
-	// Get mouse position
-	double xpos, ypos;
-	glfwGetCursorPos(window, &xpos, &ypos);
+	if (!cursorOn)
+	{
+		// Get mouse position
+		double xpos, ypos;
+		glfwGetCursorPos(window, &xpos, &ypos);
 
-	// Reset mouse position for next frame
-	glfwSetCursorPos(window, 1024 / 2, 768 / 2);
+		// Reset mouse position for next frame
+		glfwSetCursorPos(window, 1024 / 2, 768 / 2);
 
-	// Compute new orientation
-	horizontalAngle += mouseSpeed * float(1024 / 2 - xpos);
-	verticalAngle += mouseSpeed * float(768 / 2 - ypos);
+		// Compute new orientation
+		horizontalAngle += mouseSpeed * float(1024 / 2 - xpos);
+		verticalAngle += mouseSpeed * float(768 / 2 - ypos);
 
+	}
+
+	else
+	{
+		verticalAngle = 0;
+	}
+	
 	// Direction : Spherical coordinates to Cartesian coordinates conversion
 	glm::vec3 direction(
 		cos(verticalAngle) * sin(horizontalAngle),

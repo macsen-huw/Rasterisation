@@ -140,7 +140,7 @@ const vector<vec3> skyboxVerts = {
 bool isWireframe = false;
 
 //Enable/disable the cursor
-bool cursorOn = false;
+bool cursorOn = true;
 
 //Initial position of the directional light
 vec3 lightPos = vec3(0, -0.5, -0.5);
@@ -183,7 +183,7 @@ bool initializeGL()
 		return -1;
 
 	glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
-	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 	glfwPollEvents();
 	glfwSetCursorPos(window, window_width / 2, window_height / 2);
 }
@@ -742,6 +742,20 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	}
 }
 
+void mouse_callback(GLFWwindow* window, int button, int action, int mods)
+{
+	//If rightclick, we enable/disable the cursor
+	if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
+	{
+		if(cursorOn)
+			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+		else
+			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+
+		cursorOn = !cursorOn;
+	}
+}
+
 void LoadSkybox()
 {
 	//Initialise skybox VAO and VBO
@@ -882,7 +896,17 @@ void RenderImGui()
 	//Creating the window
 	ImGui::Begin("Look! I've done it!");
 
+	ImGui::Checkbox("Wireframe", &isWireframe);
 
+	if (ImGui::Button("Reload Shaders"))
+	{
+		UnloadShaders();
+		LoadShaders(programID, "src/Basic.vert", "src/Texture.frag");
+		LoadShaders(skyboxID, "src/skyboxVert.vert", "src/skyboxFrag.frag");
+		LoadShaders(sunflowerID, "src/sunflower.vert", "src/sunflower.frag", "src/sunflower.geom");
+	}
+
+	ImGui::SliderFloat("Scale", &scaleValue, 0.1f, 2.5f);
 
 	ImGui::End();
 
@@ -907,7 +931,8 @@ int main(){
 	initializeImGui();
 
 	glfwSetKeyCallback(window, key_callback);
-
+	//glfwSetMouseButtonCallback(window, mouse_callback);
+	//glfwSetMouseButtonCallback(window, ImGui)
 	//Setup program for the model
 	LoadModel();
 	LoadTextures();
@@ -936,7 +961,7 @@ int main(){
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		//Compute the MVP matrix from keyboard and mouse input
-		computeMatricesFromInputs();
+		computeMatricesFromInputs(cursorOn);
 
 		mat4 ProjectionMatrix = getProjectionMatrix();
 		mat4 ViewMatrix = getViewMatrix();
@@ -949,6 +974,11 @@ int main(){
 		vec3 cameraPos = getCameraPosition();
 		string title = "OpenGL Renderer - (" + to_string(cameraPos[0]) + "," + to_string(cameraPos[1]) + "," + to_string(cameraPos[2]) + ")";
 		glfwSetWindowTitle(window, title.c_str());
+
+		if (isWireframe)
+			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		else
+			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 		//First pass -> draw skybox
 		glDepthMask(GL_FALSE);
@@ -1011,6 +1041,7 @@ int main(){
 					  (void*)0	//Element array buffer offset
 		);
 
+		RenderImGui();
 
 		//Third pass -> handle billboards
 		glUseProgram(sunflowerID);
@@ -1031,9 +1062,6 @@ int main(){
 
 		glUseProgram(programID);
 		glEnable(GL_CULL_FACE);
-
-		//Finally, render the UI window
-		RenderImGui();
 
 		//Swap Buffers
 		glfwSwapBuffers(window);
