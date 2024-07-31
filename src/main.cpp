@@ -1,3 +1,7 @@
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
+
 #include <iostream>
 using namespace std;
 
@@ -134,6 +138,9 @@ const vector<vec3> skyboxVerts = {
 
 //Store either polygon or wireframe
 bool isWireframe = false;
+
+//Enable/disable the cursor
+bool cursorOn = false;
 
 //Initial position of the directional light
 vec3 lightPos = vec3(0, -0.5, -0.5);
@@ -680,7 +687,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	if (key == GLFW_KEY_R && action == GLFW_PRESS)
 	{
 		UnloadShaders();
-		LoadShaders(programID, "Basic.vert", "Texture.frag");
+		LoadShaders(programID, "src/Basic.vert", "src/Texture.frag");
 		LoadShaders(skyboxID, "src/skyboxVert.vert", "src/skyboxFrag.frag");
 		LoadShaders(sunflowerID, "src/sunflower.vert", "src/sunflower.frag", "src/sunflower.geom");
 
@@ -733,7 +740,6 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		if(scaleValue > 0)
 			scaleValue = scaleValue - 0.1;
 	}
-
 }
 
 void LoadSkybox()
@@ -855,10 +861,50 @@ void LoadSunflower()
 
 }
 
+//Initialize ImGui
+void initializeImGui()
+{
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO(); (void)io;
+	ImGui::StyleColorsDark();
+	ImGui_ImplGlfw_InitForOpenGL(window, true);
+	ImGui_ImplOpenGL3_Init("#version 330");
+}
+
+void RenderImGui()
+{
+	//Setup
+	ImGui_ImplOpenGL3_NewFrame();
+	ImGui_ImplGlfw_NewFrame();
+	ImGui::NewFrame();
+
+	//Creating the window
+	ImGui::Begin("Look! I've done it!");
+
+
+
+	ImGui::End();
+
+	//Actually drawing the window
+	ImGui::Render();
+	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+}
+
+void DestroyImGui()
+{
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
+	ImGui::DestroyContext();
+}
+
 int main(){
 	//Initialise OpenGL and its extensions
 	if (!initializeGL())
 		return -1;
+
+	//Initialise ImGui
+	initializeImGui();
 
 	glfwSetKeyCallback(window, key_callback);
 
@@ -866,7 +912,7 @@ int main(){
 	LoadModel();
 	LoadTextures();
 	programID = glCreateProgram();
-	LoadShaders(programID, "Basic.vert", "Texture.frag");
+	LoadShaders(programID, "src/Basic.vert", "src/Texture.frag");
 
 	//Setup program for the skybox
 	skyboxID = glCreateProgram();
@@ -986,13 +1032,19 @@ int main(){
 		glUseProgram(programID);
 		glEnable(GL_CULL_FACE);
 
+		//Finally, render the UI window
+		RenderImGui();
+
 		//Swap Buffers
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 
 	} while (glfwWindowShouldClose(window) == 0);
 
-	//Before we return, we clean up glfw
+	//Destroy ImGui
+	DestroyImGui();
+
+	//Also, we clean up GLFW
 	UnloadModel();
 	UnloadShaders();
 	UnloadTextures();
