@@ -3,6 +3,8 @@
 includedirs( "glfw/include" );
 includedirs( "glew-1.13.0/include" );
 includedirs( "glm-0.9.7.1" );
+includedirs("imgui");
+
 defines { "GLEW_STATIC"}
 
 project( "x-glfw" )
@@ -73,4 +75,11 @@ project( "x-glm" )
 	files( "glm-0.9.7.1/**.hpp" )
 	files( "glm-0.9.7.1/**.inl" )
 
+project("imgui")
+	kind "StaticLib"
+
+	location "."
+
+	files ("imgui/**.cpp")
+	files("imgui/**.h")
 --EOF

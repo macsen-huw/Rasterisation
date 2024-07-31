@@ -76,6 +76,7 @@ project "main"
 	links "common"
 	links "x-glfw"
 	links "x-glew"
+	links "imgui"
 
 	includedirs( "." );
 
