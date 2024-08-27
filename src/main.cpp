@@ -48,7 +48,8 @@ GLuint elementbuffer;
 GLuint skyboxVertexArray;
 GLuint skyboxBuffer;
 GLuint sunflowerVertexArray;
-GLuint sunflowerBuffer;
+GLuint sunflowerVertexBuffer;
+GLuint sunflowerUVBuffer;
 
 //Number of indices in the plane
 unsigned int nIndices;
@@ -140,7 +141,9 @@ const vector<vec3> skyboxVerts = {
 bool isWireframe = false;
 
 //Enable/disable the cursor
-bool cursorOn = true;
+bool cursorOff = false;
+bool cursorWasJustOff = false;
+ImGuiIO* io = nullptr;
 
 //Initial position of the directional light
 vec3 lightPos = vec3(0, -0.5, -0.5);
@@ -629,7 +632,8 @@ void UnloadModel()
 	glDeleteBuffers(1, &skyboxBuffer);
 
 	glDeleteVertexArrays(1, &sunflowerVertexArray);
-	glDeleteBuffers(1, &sunflowerBuffer);
+	glDeleteBuffers(1, &sunflowerVertexBuffer);
+	glDeleteBuffers(1, &sunflowerUVBuffer);
 }
 
 void UnloadTextures()
@@ -744,15 +748,27 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
 void mouse_callback(GLFWwindow* window, int button, int action, int mods)
 {
+	//If it's on here, then it means that 
+	//Pass it to imgui first
+	ImGui_ImplGlfw_MouseButtonCallback(window, button, action, mods);
+
 	//If rightclick, we enable/disable the cursor
 	if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
 	{
-		if(cursorOn)
-			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-		else
+		if (cursorOff)
+		{
 			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-
-		cursorOn = !cursorOn;
+			io->WantCaptureMouse = true;
+			cursorWasJustOff = true;
+		}
+			
+		else
+		{
+			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+			io->WantCaptureMouse = false;
+		}
+			
+		cursorOff = !cursorOff;
 	}
 }
 
@@ -823,9 +839,18 @@ void LoadSunflower()
 	//Initialise sunflower vertex positions
 	//Start by mapping the corners of [-1, 1]
 	vector <vec3> sunflowerVerts = {
-		{-4.09,1.0,-3.77},
-		{3.63, 1.0, 1.14},
-		{1.16, 0.86, 2.48}
+		{-4.09, 0, -3.77},
+		{3.63, 0, 1.14},
+		{1.16, 0, 2.48}
+	};
+
+	//Corresponding tex coords: 3624, 34522, 24749
+	vector <vec2> sunflowerTexCoords =
+	{
+		{0.0929648206, 0.123115577},
+		{0.866834164 , 0.615577877},
+		{0.620603025, 0.751256287}
+
 	};
 
 	//Initialise VAO and VBO
@@ -833,8 +858,8 @@ void LoadSunflower()
 	glBindVertexArray(sunflowerVertexArray);
 	glEnableVertexAttribArray(0);
 
-	glGenBuffers(1, &sunflowerBuffer);
-	glBindBuffer(GL_ARRAY_BUFFER, sunflowerBuffer);
+	glGenBuffers(1, &sunflowerVertexBuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, sunflowerVertexBuffer);
 	glBufferData(GL_ARRAY_BUFFER, sunflowerVerts.size() * sizeof(vec3), &sunflowerVerts[0], GL_STATIC_DRAW);
 	
 	glVertexAttribPointer(
@@ -845,6 +870,21 @@ void LoadSunflower()
 		0,	//Stride
 		(void*)0	//Array buffer object
 	);
+
+	//Describe UVs
+	glEnableVertexAttribArray(1);
+	glGenBuffers(1, &sunflowerUVBuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, sunflowerUVBuffer);
+	glBufferData(GL_ARRAY_BUFFER, sunflowerTexCoords.size() * sizeof(vec2), &sunflowerTexCoords[0], GL_STATIC_DRAW);
+	glVertexAttribPointer(
+		1,	//attribute
+		2,	//Size
+		GL_FLOAT,	//Type of each individual element
+		GL_FALSE,	//Normalised?
+		0,	//Stride
+		(void*)0	//Array buffer object
+	);
+
 
 	//Load sunflower texture
 	glGenTextures(1, &sunflowerTextureID);
@@ -880,7 +920,8 @@ void initializeImGui()
 {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
-	ImGuiIO& io = ImGui::GetIO(); (void)io;
+	io = &ImGui::GetIO(); (void)io;
+	io->WantCaptureMouse = false;
 	ImGui::StyleColorsDark();
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init("#version 330");
@@ -931,7 +972,7 @@ int main(){
 	initializeImGui();
 
 	glfwSetKeyCallback(window, key_callback);
-	//glfwSetMouseButtonCallback(window, mouse_callback);
+	glfwSetMouseButtonCallback(window, mouse_callback);
 	//glfwSetMouseButtonCallback(window, ImGui)
 	//Setup program for the model
 	LoadModel();
@@ -961,7 +1002,10 @@ int main(){
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		//Compute the MVP matrix from keyboard and mouse input
-		computeMatricesFromInputs(cursorOn);
+		computeMatricesFromInputs(cursorOff, cursorWasJustOff);
+
+		if (cursorWasJustOff)
+			cursorWasJustOff = false;
 
 		mat4 ProjectionMatrix = getProjectionMatrix();
 		mat4 ViewMatrix = getViewMatrix();
@@ -1041,18 +1085,24 @@ int main(){
 					  (void*)0	//Element array buffer offset
 		);
 
-		RenderImGui();
-
 		//Third pass -> handle billboards
 		glUseProgram(sunflowerID);
 
 		glDisable(GL_CULL_FACE);
-		mat4 projectionViewMatrix = ProjectionMatrix * ViewMatrix;
 
-		glUniformMatrix4fv(glGetUniformLocation(sunflowerID, "viewProjection"), 1, GL_FALSE, &projectionViewMatrix[0][0]);
+		glUniformMatrix4fv(glGetUniformLocation(sunflowerID, "view"), 1, GL_FALSE, &ViewMatrix[0][0]);
+		glUniformMatrix4fv(glGetUniformLocation(sunflowerID, "projection"), 1, GL_FALSE, &ProjectionMatrix[0][0]);
 
 		glUniformMatrix4fv(glGetUniformLocation(sunflowerID, "cameraPosition"), 1, GL_FALSE, &cameraPos[0]);
 
+		//Pass the height map texture to the sunflower's vertex shader
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, heightMapID);
+		glUniform1i(glGetUniformLocation(sunflowerID, "heightMap"), 1);
+
+		glUniform1f(glGetUniformLocation(sunflowerID, "scaleValue"), scaleValue);
+
+		//Pass the sunflower texture
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, sunflowerTextureID);
 
@@ -1063,6 +1113,7 @@ int main(){
 		glUseProgram(programID);
 		glEnable(GL_CULL_FACE);
 
+		RenderImGui();
 		//Swap Buffers
 		glfwSwapBuffers(window);
 		glfwPollEvents();
