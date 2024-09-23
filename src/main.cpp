@@ -143,6 +143,7 @@ bool isWireframe = false;
 //Enable/disable the cursor
 bool cursorOff = false;
 bool cursorWasJustOff = false;
+bool cursorWasJustOn = false;
 ImGuiIO* io = nullptr;
 
 //Initial position of the directional light
@@ -529,7 +530,7 @@ bool readAndCompileShader(const char* shader_path, const GLuint& id)
 		return false;
 	}
 
-	cout << "Compiling shader : " << shader_path << endl;
+	//cout << "Compiling shader : " << shader_path << endl;
 	char const* sourcePointer = shaderCode.c_str();
 	glShaderSource(id, 1, &sourcePointer, NULL);
 	glCompileShader(id);
@@ -547,7 +548,7 @@ bool readAndCompileShader(const char* shader_path, const GLuint& id)
 		cout << &shaderErrorMessage[0] << endl;
 	}
 
-	cout << "Compilation of Shader: " << shader_path << " " << (Result == GL_TRUE ? "Success" : "Failed") << endl;
+	//cout << "Compilation of Shader: " << shader_path << " " << (Result == GL_TRUE ? "Success" : "Failed") << endl;
 	return Result == 1;
 }
 
@@ -580,7 +581,7 @@ void LoadShaders(GLuint& program, const char* vertex_file_path, const char* frag
 		GLint Result = GL_FALSE;
 		int InfoLogLength;
 
-		cout << "Linking Program" << endl;
+		//cout << "Linking Program" << endl;
 		program = glCreateProgram();
 		glAttachShader(program, VertexShaderID);
 
@@ -601,7 +602,7 @@ void LoadShaders(GLuint& program, const char* vertex_file_path, const char* frag
 			cout << &ProgramErrorMessage[0];
 		}
 
-		cout << "Linking program: " << (Result == GL_TRUE ? "Success" : "Failed") << endl;
+		//cout << "Linking program: " << (Result == GL_TRUE ? "Success" : "Failed") << endl;
 
 	}
 	
@@ -766,6 +767,7 @@ void mouse_callback(GLFWwindow* window, int button, int action, int mods)
 		{
 			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 			io->WantCaptureMouse = false;
+			cursorWasJustOn = true;
 		}
 			
 		cursorOff = !cursorOff;
@@ -815,7 +817,7 @@ void LoadSkybox()
 		//Check that it went through alright
 		if (skyboxData) {
 			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, skyboxData);
-			cout << "Successfully loaded: " << cubeTextures.at(i) << endl;
+			//cout << "Successfully loaded: " << cubeTextures.at(i) << endl;
 		}
 		else
 			cout << "Failed to load at path: " << cubeTextures.at(i) << endl;
@@ -899,7 +901,7 @@ void LoadSunflower()
 	if (sunflowerData)
 	{
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, sunflowerData);
-		cout << "Successfully loaded: external/sunflower.png" << endl;
+		//cout << "Successfully loaded: external/sunflower.png" << endl;
 	}
 
 	else
@@ -935,7 +937,7 @@ void RenderImGui()
 	ImGui::NewFrame();
 
 	//Creating the window
-	ImGui::Begin("Look! I've done it!");
+	ImGui::Begin("UI Window");
 
 	ImGui::Checkbox("Wireframe", &isWireframe);
 
@@ -1002,10 +1004,13 @@ int main(){
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		//Compute the MVP matrix from keyboard and mouse input
-		computeMatricesFromInputs(cursorOff, cursorWasJustOff);
+		computeMatricesFromInputs(cursorOff, cursorWasJustOn, cursorWasJustOff);
 
 		if (cursorWasJustOff)
 			cursorWasJustOff = false;
+
+		if (cursorWasJustOn)
+			cursorWasJustOn = false;
 
 		mat4 ProjectionMatrix = getProjectionMatrix();
 		mat4 ViewMatrix = getViewMatrix();
@@ -1016,7 +1021,7 @@ int main(){
 		mat4 modelViewMatrix = ViewMatrix * ModelMatrix;
 
 		vec3 cameraPos = getCameraPosition();
-		string title = "OpenGL Renderer - (" + to_string(cameraPos[0]) + "," + to_string(cameraPos[1]) + "," + to_string(cameraPos[2]) + ")";
+		string title = "Rasterisation - (" + to_string(cameraPos[0]) + "," + to_string(cameraPos[1]) + "," + to_string(cameraPos[2]) + ")";
 		glfwSetWindowTitle(window, title.c_str());
 
 		if (isWireframe)

@@ -3,7 +3,7 @@ using namespace std;
 
 bool loadBMP_custom(const char* imagepath, int& width, int& height, unsigned char* &data) {
 
-	cout << "Reading image " << imagepath;
+	//cout << "Reading image " << imagepath;
 
 	// Data read from the header of the BMP file
 	unsigned char header[54];

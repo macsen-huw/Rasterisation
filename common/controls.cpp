@@ -37,7 +37,7 @@ float mouseSpeed = 0.005f;
 
 
 
-void computeMatricesFromInputs(bool cursorOff, bool wasJustOn) {
+void computeMatricesFromInputs(bool cursorOff, bool wasJustOff, bool wasJustOn) {
 
 	// glfwGetTime is called only once, the first time this function is called
 	static double lastTime = glfwGetTime();
@@ -51,29 +51,28 @@ void computeMatricesFromInputs(bool cursorOff, bool wasJustOn) {
 		int width, height;
 		glfwGetWindowSize(window, &width, &height);
 
-		if (wasJustOn)
-		{
-			// Reset mouse position for next frame
-			glfwSetCursorPos(window, width / 2, height / 2);
-		}
-
 		// Get mouse position
 		double xpos, ypos;
 		glfwGetCursorPos(window, &xpos, &ypos);
 
-		// Reset mouse position for next frame
-		glfwSetCursorPos(window, width / 2, height / 2);
-		
-		// Compute new orientation
-		horizontalAngle += mouseSpeed * float(width / 2 - xpos);
-		verticalAngle += mouseSpeed * float(height / 2 - ypos);
+		if (wasJustOff)
+		{
+			// Reset mouse position for next frame
+			glfwSetCursorPos(window, width / 2, height / 2);
 
-	}
+			xpos = width / 2;
+			ypos = height / 2;
+		}
 
-	else
-	{
-		verticalAngle = 0;
-		horizontalAngle = 0;
+		else
+		{
+			// Compute new orientation
+			horizontalAngle += mouseSpeed * float(width / 2 - xpos);
+			verticalAngle += mouseSpeed * float(height / 2 - ypos);
+
+			// Reset mouse position for next frame
+			glfwSetCursorPos(window, width / 2, height / 2);
+		}
 
 	}
 	
